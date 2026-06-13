@@ -214,9 +214,13 @@ EXAMPLES = {
     "전개":       ["(x+2)**3", "(a+b)**4", "(x-1)*(x+2)*(x+3)"],
 }
 
+# 예시 클릭값을 text_area value로 미리 꺼내두기
+prefill = st.session_state.pop("ex", "")
+
 col1, col2 = st.columns([3, 1])
 with col1:
     user_input = st.text_area("수식 입력", height=140,
+        value=prefill,
         placeholder="예) 방정식: x**2 - 5*x + 6 = 0\n    미분/적분: x**3 + 2*x\n    연립: 2*x + y = 5  (줄 바꿔서 입력)",
         label_visibility="collapsed")
 with col2:
@@ -228,9 +232,6 @@ with col2:
                 if st.button(label, key=ex):
                     st.session_state["ex"] = ex
                     st.rerun()
-
-if "ex" in st.session_state:
-    user_input = st.session_state.pop("ex")
 
 btn_col, _ = st.columns([1, 5])
 with btn_col:

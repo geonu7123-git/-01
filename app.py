@@ -216,6 +216,7 @@ EXAMPLES = {
 
 # 예시 클릭값을 text_area value로 미리 꺼내두기
 prefill = st.session_state.pop("ex", "")
+auto_run = st.session_state.pop("auto_run", False)
 
 col1, col2 = st.columns([3, 1])
 with col1:
@@ -231,6 +232,7 @@ with col2:
                 label = ex.split('\n')[0][:22] + ("…" if len(ex.split('\n')[0]) > 22 else "")
                 if st.button(label, key=ex):
                     st.session_state["ex"] = ex
+                    st.session_state["auto_run"] = True
                     st.rerun()
 
 btn_col, _ = st.columns([1, 5])
@@ -239,8 +241,8 @@ with btn_col:
 
 st.markdown("---")
 
-# ── 실행 ──────────────────────────────────────────────────────
-if run:
+# ── 실행 (버튼 클릭 또는 예시 자동 실행) ──────────────────────
+if run or auto_run:
     if not user_input.strip():
         st.warning("📝 수식을 입력해 주세요!")
         st.stop()

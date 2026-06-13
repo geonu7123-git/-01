@@ -33,9 +33,13 @@ st.markdown('<div class="hero"><h1>🧮 수학 숙제 도우미</h1><p>방정식
 
 x, y, z, t, n = symbols('x y z t n')
 a, b, c, d = symbols('a b c d')
+f, g, h, k, m, p, q, r, s_sym, u, v, w = symbols('f g h k m p q r s u v w')
 TRANSFORMATIONS = standard_transformations + (implicit_multiplication_application,)
+
+# 알파벳 전체를 심볼로 등록 (함수명·상수 제외)
+_ALL_SYMBOLS = {ch: symbols(ch) for ch in 'abcdfghjklmnopqrstuvwxyz'}
 LOCAL_DICT = {
-    'x':x,'y':y,'z':z,'t':t,'n':n,'a':a,'b':b,'c':c,'d':d,
+    **_ALL_SYMBOLS,
     'e':E,'pi':pi,'sin':sin,'cos':cos,'tan':tan,'log':log,'ln':ln,
     'sqrt':sqrt,'exp':exp,'abs':Abs,'oo':oo,'inf':oo,
     'asin':asin,'acos':acos,'atan':atan,'sinh':sinh,'cosh':cosh,'tanh':tanh,
@@ -43,7 +47,10 @@ LOCAL_DICT = {
 
 def safe_parse(s):
     s = s.strip().replace("^", "**")
+    # 숫자 뒤 문자: 2x → 2*x
     s = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', s)
+    # 문자 뒤 숫자: x2 → x**2  (단, ** 바로 뒤는 제외)
+    s = re.sub(r'(?<!\*\*)([a-zA-Z])(\d)', r'\1**\2', s)
     return parse_expr(s, transformations=TRANSFORMATIONS, local_dict=LOCAL_DICT)
 
 def solve_equation(eq_str):
@@ -208,6 +215,7 @@ with st.sidebar:
 EXAMPLES = {
     "방정식":     ["x**2 - 5*x + 6 = 0", "2*x**2 + 3*x - 2 = 0", "x**3 - 6*x**2 + 11*x - 6 = 0"],
     "연립방정식": ["2*x + y = 5\nx - y = 1", "x + y + z = 6\n2*x - y + z = 3\nx + 2*y - z = 2"],
+    "문자식":     ["a^3 * b^5", "(a+b)^2", "a^3 * b^5 + a^2 * b^3"],
     "인수분해":   ["x**2 - 5*x + 6", "x**3 - 8", "4*x**2 - 12*x + 9"],
     "미분":       ["x**3 + 2*x**2 - 5*x + 1", "sin(x)*cos(x)", "exp(x)*log(x)"],
     "적분":       ["2*x + 3", "sin(x)", "x**2 + 3*x"],

@@ -61,24 +61,88 @@ def solve_equation(eq_str):
     lhs, rhs = safe_parse(p[0]), safe_parse(p[1])
     eq = Eq(lhs, rhs)
     steps.append(("📌 방정식", f"$${latex(eq)}$$"))
+
     expr = lhs - rhs
-    steps.append(("🔄 이항 정리", f"$${latex(expr)} = 0$$"))
+
+    # 차수 표시 (다항식일 때만)
     try:
         deg = Poly(expr, x).degree()
         steps.append(("📊 차수", f"{deg}차 방정식"))
     except: pass
-    solutions = solve(eq, x)
+
+    solutions = []
+
+    # 1단계: 일반 solve
+    try:
+        solutions = solve(eq, x)
+    except: pass
+
+    # 2단계: solveset (복소수 포함)
     if not solutions:
-        steps.append(("❌ 해", "실수 범위에서 해가 없습니다."))
+        try:
+            ss = solveset(eq, x, domain=Reals)
+            if ss and not ss.is_empty and isinstance(ss, (FiniteSet,)):
+                solutions = list(ss)
+        except: pass
+
+    # 3단계: 로그 변환 시도 (지수방정식 x^x = a^b 형태)
+    if not solutions:
+        try:
+            # 양변 log 취하기
+            log_lhs = expand_log(log(lhs), force=True)
+            log_rhs = expand_log(log(rhs), force=True)
+            log_eq = Eq(log_lhs, log_rhs)
+            steps.append(("🔄 로그 변환", f"양변에 자연로그를 취합니다:  \n$$\\ln({latex(lhs)}) = \\ln({latex(rhs)})$$  \n$$\\Rightarrow {latex(log_lhs)} = {latex(log_rhs)}$$"))
+            log_solutions = solve(log_eq, x)
+            if log_solutions:
+                solutions = log_solutions
+        except: pass
+
+    # 4단계: 수치해 (nsolve) - 해석적 풀이 불가 시
+    if not solutions:
+        try:
+            steps.append(("🔄 수치 풀이", "해석적 풀이가 어려워 수치 방법으로 근사해를 구합니다."))
+            for x0 in [1, 2, 3, 5, 10, 0.5, -1, -2]:
+                try:
+                    ns = nsolve(expr, x, x0)
+                    # 중복 제거 (오차 범위 내)
+                    if not any(abs(float(ns) - float(s)) < 1e-6 for s in solutions):
+                        solutions.append(ns)
+                    if len(solutions) >= 3:
+                        break
+                except: pass
+        except: pass
+
+    # 결과 출력
+    if not solutions:
+        steps.append(("❌ 해", "실수 범위에서 해를 구할 수 없습니다."))
     else:
-        sol_str = ",\\quad ".join([latex(s) for s in solutions])
-        steps.append(("✅ 해", f"$$x = {sol_str}$$"))
+        formatted = []
+        for s in solutions:
+            s_simplified = simplify(s)
+            line = f"$$x = {latex(s_simplified)}$$"
+            # 수치값도 함께 표시
+            try:
+                numeric = float(s_simplified.evalf())
+                if s_simplified != numeric:
+                    line += f"  \n$\\approx {numeric:.6f}$"
+            except: pass
+            formatted.append(line)
+        steps.append(("✅ 해", "  \n".join(formatted)))
+
+        # 검산
         checks = []
         for s in solutions:
-            lv = simplify(lhs.subs(x, s))
-            rv = simplify(rhs.subs(x, s))
-            checks.append(f"$x = {latex(s)}$ 대입 → 좌변 $= {latex(lv)}$, 우변 $= {latex(rv)}$ ✓")
-        steps.append(("🔎 검산", "  \n".join(checks)))
+            try:
+                lv = simplify(lhs.subs(x, s))
+                rv = simplify(rhs.subs(x, s))
+                diff_val = simplify(lv - rv)
+                ok = "✓" if diff_val == 0 or abs(float(diff_val.evalf())) < 1e-6 else "△ (근사값)"
+                checks.append(f"$x = {latex(simplify(s))}$ 대입 → 좌변 $\\approx {latex(lv)}$, 우변 $\\approx {latex(rv)}$ {ok}")
+            except: pass
+        if checks:
+            steps.append(("🔎 검산", "  \n".join(checks)))
+
     return steps
 
 def factorize_expr(expr_str):
@@ -214,6 +278,7 @@ with st.sidebar:
 # ── 예시 ──────────────────────────────────────────────────────
 EXAMPLES = {
     "방정식":     ["x**2 - 5*x + 6 = 0", "2*x**2 + 3*x - 2 = 0", "x**3 - 6*x**2 + 11*x - 6 = 0"],
+    "지수방정식": ["x^x = 3^324", "2^x = 32", "x^x = 4^8"],
     "연립방정식": ["2*x + y = 5\nx - y = 1", "x + y + z = 6\n2*x - y + z = 3\nx + 2*y - z = 2"],
     "문자식":     ["a^3 * b^5", "(a+b)^2", "a^3 * b^5 + a^2 * b^3"],
     "인수분해":   ["x**2 - 5*x + 6", "x**3 - 8", "4*x**2 - 12*x + 9"],
